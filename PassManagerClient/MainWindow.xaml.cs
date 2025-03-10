@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using PassManagerClient.ViewModels;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -19,6 +20,7 @@ namespace PassManagerClient
         public MainWindow()
         {
             InitializeComponent();
+            DataContext = new MainViewModel(); // Link the ViewModel 
         }
     }
 }
