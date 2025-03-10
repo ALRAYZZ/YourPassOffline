@@ -10,6 +10,7 @@ namespace PassManagerClient.Services
 	{
 		private readonly byte[] _key;
 		private readonly string _filePath;
+		public string FilePath => _filePath;
 
 		public VaultService(string key)
 		{
@@ -35,21 +36,18 @@ namespace PassManagerClient.Services
 				string json = DecryptData(encryptedData); // Decrypt the data
 				return JsonSerializer.Deserialize<Vault>(json) ?? new Vault(); // Deserialize the decrypted data
 			}
-			catch (Exception ex)
+			catch
 			{
 				// If anything goes wrong, return an empty vault
-				Console.WriteLine($"Failed to load vault: {ex.Message}");
-				return new Vault();
+				throw new CryptographicException("Failed to decrypt the vault. Please check you decryption key.");
 			}
 		}
-
 		public void SaveVault(Vault vault)
 		{
 			var json = JsonSerializer.Serialize(vault); // Serialize the vault
 			byte[] encryptedData = EncryptData(json); // Encrypt the data
 			File.WriteAllBytes(_filePath, encryptedData); // Write the encrypted data to the file
 		}
-
 		private byte[] DeriveKey(string userKey)
 		{
 			// Use PBKDF2 with a fixed salt for simplicity (could store salt in file later)
@@ -57,7 +55,6 @@ namespace PassManagerClient.Services
 			using var pbkdf2 = new Rfc2898DeriveBytes(userKey, salt, 10000, HashAlgorithmName.SHA256);
 			return pbkdf2.GetBytes(32);
 		}
-
 		private byte[] EncryptData(string plainText)
 		{
 			using var aes = Aes.Create(); // Create an AES enctyption provider instance
@@ -75,7 +72,6 @@ namespace PassManagerClient.Services
 
 			return result;
 		}
-
 		private string DecryptData(byte[] encryptedData)
 		{
 			if (encryptedData.Length < 16)

@@ -15,37 +15,72 @@
 
         
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsVaultOpen}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
+            
             <TextBlock Text="Enter Decryption Key:" VerticalAlignment="Center" Margin="0,0,10,0" />
-            <TextBox Width="200" Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}" />
-            <Button Content="Open Vault" Margin="0,0,10,0" Command="{Binding OpenVaultCommand}" />
+            <PasswordBox Width="200" x:Name="DecryptionKeyBox" />
+            <Button Content="Open Vault" Margin="0,0,10,0" Command="{Binding OpenVaultCommand}" CommandParameter="{Binding ElementName=DecryptionKeyBox}" />
         </StackPanel>
 
         <StackPanel Grid.Row="1" Orientation="Vertical" Margin="0,0,0,10">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsVaultOpen}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                <TextBlock Text="Site:" Width="50"/>
+                <TextBlock Text="Site:" Width="70"/>
                 <TextBox Width="200" Text="{Binding NewSite, UpdateSourceTrigger=PropertyChanged}" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                <TextBlock Text="Username:" Width="50"/>
+                <TextBlock Text="Username:" Width="70"/>
                 <TextBox Width="200" Text="{Binding NewUsername, UpdateSourceTrigger=PropertyChanged}" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                <TextBlock Text="Password:" Width="50"/>
+                <TextBlock Text="Password:" Width="70"/>
                 <TextBox Width="200" Text="{Binding NewPassword, UpdateSourceTrigger=PropertyChanged}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <Button Content="Save Entry" Margin="0,10,0,0" Command="{Binding SavePasswordCommand}"/>
+                <Button Content="Close Vault" Margin="0,10,0,0" Command="{Binding CloseVaultCommand}"/>
             </StackPanel>
         </StackPanel>
 
-
-        <ListBox Grid.Row="2" ItemsSource="{Binding VaultEntries}">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding Site}" Width="100"/>
-                        <TextBlock Text="{Binding Username}" Width="100"/>
-                        <TextBlock Text="{Binding Password}" Width="100"/>
-                    </StackPanel>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+        <StackPanel Grid.Row="2" Orientation="Vertical">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsVaultOpen}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
+            
+            <ListBox ItemsSource="{Binding VaultEntries}" MouseDoubleClick="ListBox_MouseDoubleClick">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Site}" Width="200"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </StackPanel>
     </Grid>
 </Window>

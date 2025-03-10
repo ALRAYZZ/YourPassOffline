@@ -2,6 +2,9 @@
 using PassManagerClient.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
+using System.Security.Cryptography;
+using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace PassManagerClient.ViewModels
@@ -12,6 +15,7 @@ namespace PassManagerClient.ViewModels
 		private string _newSite = "";
 		private string _newUsername = "";
 		private string _newPassword = "";
+		private bool _isVaultOpen = false;
 		private ObservableCollection<VaultEntry> _vaultEntries = new();
 		private VaultService _vaultService;
 
@@ -25,7 +29,6 @@ namespace PassManagerClient.ViewModels
 				OnPropertyChanged(nameof(Key)); // Tell the UI that the Key property has changed
 			}
 		}
-
 		public string NewSite
 		{
 			get => _newSite;
@@ -35,7 +38,6 @@ namespace PassManagerClient.ViewModels
 				OnPropertyChanged(nameof(NewSite));
 			}
 		}
-
 		public string NewUsername
 		{
 			get => _newUsername;
@@ -45,7 +47,6 @@ namespace PassManagerClient.ViewModels
 				OnPropertyChanged(nameof(NewUsername));
 			}
 		}
-
 		public string NewPassword
 		{
 			get => _newPassword;
@@ -55,7 +56,15 @@ namespace PassManagerClient.ViewModels
 				OnPropertyChanged(nameof(NewPassword));
 			}
 		}
-
+		public bool IsVaultOpen
+		{
+			get => _isVaultOpen;
+			set
+			{
+				_isVaultOpen = value;
+				OnPropertyChanged(nameof(IsVaultOpen));
+			}
+		}
 		public ObservableCollection<VaultEntry> VaultEntries
 		{
 			get => _vaultEntries;
@@ -68,16 +77,23 @@ namespace PassManagerClient.ViewModels
 
 		// Command bound to the OpenVault button, we need matching XAML for this to work Command="{Binding OpenVaultCommand}"
 		public ICommand OpenVaultCommand { get; }
+		public ICommand CloseVaultCommand { get; }
 		public ICommand SavePasswordCommand { get; }
 
 		public MainViewModel()
 		{
-			OpenVaultCommand = new RelayCommand(OpenVault); // Set the OpenVault method as the command's action
-			SavePasswordCommand = new RelayCommand(SavePassword); // Set the SavePassword method as the command's action
+			OpenVaultCommand = new RelayCommand(OpenVault); // Now takes a parameter
+			SavePasswordCommand = new RelayCommand(_ => SavePassword()); // No parameter needed
+			CloseVaultCommand = new RelayCommand(_ => CloseVault()); // No parameter needed
 		}
 
-		private void OpenVault()
+		public void OpenVault(object? parameter)
 		{
+			if (parameter is PasswordBox passwordBox)
+			{
+				Key = passwordBox.Password; // Grab the password from the PasswordBox
+			}
+
 			if (string.IsNullOrEmpty(Key))
 			{
 				// Show a message box if the key is empty
@@ -87,11 +103,47 @@ namespace PassManagerClient.ViewModels
 
 			// Load the vault entries
 			_vaultService = new VaultService(Key);
-			Vault vault = _vaultService.LoadVault();
-			VaultEntries = new ObservableCollection<VaultEntry>(vault.Entries);
-			System.Windows.MessageBox.Show("Vault opened successfully", "Success", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-		}
 
+			if (!File.Exists(_vaultService.FilePath))
+			{
+				// First time opening the vault: ask the user if they want to create a new vault
+				var result = System.Windows.MessageBox.Show("Vault does not exist, would you like to create a new vault?", "Vault does not exist", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
+				if (result == System.Windows.MessageBoxResult.Yes)
+				{
+					_vaultService.SaveVault(new Vault());
+					System.Windows.MessageBox.Show("Vault created successfully", "Success", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+					IsVaultOpen = true; // Enable the UI
+				}
+				else
+				{
+					return; // User chose not to create a new vault
+				}
+			}
+			else
+			{
+				// Load the vault entries
+				try
+				{
+					Vault vault = _vaultService.LoadVault();
+					VaultEntries = new ObservableCollection<VaultEntry>(vault.Entries);
+					IsVaultOpen = true;
+					System.Windows.MessageBox.Show("Vault opened successfully", "Success", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+				}
+				catch (CryptographicException)
+				{
+					System.Windows.MessageBox.Show("Invalid decryption key. Please check your decryption key.", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+				}
+			}
+		}
+		private void CloseVault()
+		{
+			// Reset the key and vault entries
+			Key = "";
+			VaultEntries.Clear();
+			IsVaultOpen = false;
+
+			System.Windows.MessageBox.Show("Vault closed successfully", "Success", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+		}
 		private void SavePassword()
 		{
 			if (string.IsNullOrEmpty(Key) || _vaultService == null)
@@ -121,6 +173,12 @@ namespace PassManagerClient.ViewModels
 			NewPassword = "";
 			System.Windows.MessageBox.Show("Password saved successfully", "Success", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
 		}
+		
+
+
+
+
+
 		// INotifyPropertyChanged implementation
 		public event PropertyChangedEventHandler? PropertyChanged;
 		private void OnPropertyChanged(string propertyName)
@@ -133,10 +191,10 @@ namespace PassManagerClient.ViewModels
 	// Simple command implementation
 	public class RelayCommand : ICommand
 	{
-		private readonly Action _execute; // What to do when the command is executed
-		public RelayCommand(Action execute) => _execute = execute;
-		public event EventHandler? CanExecuteChanged; // Not used in this example
-		public bool CanExecute(object? parameter) => true; // Always clickable for now
-		public void Execute(object? parameter) => _execute(); // Execute the action
+		private readonly Action<object?> _execute; // Changed to take a parameter
+		public RelayCommand(Action<object?> execute) => _execute = execute;
+		public event EventHandler? CanExecuteChanged;
+		public bool CanExecute(object? parameter) => true;
+		public void Execute(object? parameter) => _execute(parameter);
 	}
 }
