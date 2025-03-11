@@ -4,8 +4,10 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Security.Cryptography;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace PassManagerClient.ViewModels
 {
@@ -18,6 +20,7 @@ namespace PassManagerClient.ViewModels
 		private bool _isVaultOpen = false;
 		private ObservableCollection<VaultEntry> _vaultEntries = new();
 		private VaultService _vaultService;
+		private DispatcherTimer _inactivityTimer;
 
 		// Property bound to the Key TextBox
 		public string Key
@@ -27,6 +30,7 @@ namespace PassManagerClient.ViewModels
 			{
 				_key = value;
 				OnPropertyChanged(nameof(Key)); // Tell the UI that the Key property has changed
+				ResetInactivityTimer(); // Reset the inactivity timer when the key changes
 			}
 		}
 		public string NewSite
@@ -36,6 +40,7 @@ namespace PassManagerClient.ViewModels
 			{
 				_newSite = value;
 				OnPropertyChanged(nameof(NewSite));
+				ResetInactivityTimer(); // Reset the inactivity timer when the key changes
 			}
 		}
 		public string NewUsername
@@ -45,6 +50,7 @@ namespace PassManagerClient.ViewModels
 			{
 				_newUsername = value;
 				OnPropertyChanged(nameof(NewUsername));
+				ResetInactivityTimer(); // Reset the inactivity timer when the key changes
 			}
 		}
 		public string NewPassword
@@ -54,6 +60,7 @@ namespace PassManagerClient.ViewModels
 			{
 				_newPassword = value;
 				OnPropertyChanged(nameof(NewPassword));
+				ResetInactivityTimer(); // Reset the inactivity timer when the key changes
 			}
 		}
 		public bool IsVaultOpen
@@ -63,6 +70,14 @@ namespace PassManagerClient.ViewModels
 			{
 				_isVaultOpen = value;
 				OnPropertyChanged(nameof(IsVaultOpen));
+				if (_isVaultOpen)
+				{
+					StartInactivityTimer(); // Start the inactivity timer when the vault is open
+				}
+				else
+				{
+					StopInactivityTimer(); // Stop the inactivity timer when the vault is closed
+				}
 			}
 		}
 		public ObservableCollection<VaultEntry> VaultEntries
@@ -85,6 +100,12 @@ namespace PassManagerClient.ViewModels
 			OpenVaultCommand = new RelayCommand(OpenVault); // Now takes a parameter
 			SavePasswordCommand = new RelayCommand(_ => SavePassword()); // No parameter needed
 			CloseVaultCommand = new RelayCommand(_ => CloseVault()); // No parameter needed
+
+			_inactivityTimer = new DispatcherTimer()
+			{
+				Interval = TimeSpan.FromMinutes(5)
+			};
+			_inactivityTimer.Tick += InactivityTimer_Tick;
 		}
 
 		public void OpenVault(object? parameter)
@@ -172,12 +193,38 @@ namespace PassManagerClient.ViewModels
 			NewUsername = "";
 			NewPassword = "";
 			System.Windows.MessageBox.Show("Password saved successfully", "Success", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+			ResetInactivityTimer(); // Reset the inactivity timer when a password is saved
 		}
 		
 
+		// Inactivity timer implementation
+		private void InactivityTimer_Tick(object? sender, EventArgs e)
+		{
+			if (IsVaultOpen)
+			{
+				CloseVault();
+				MessageBox.Show("Vault closed due to inactivity", "Vault closed", MessageBoxButton.OK, MessageBoxImage.Information);
+			}
+		}
 
+		private void StartInactivityTimer()
+		{
+			_inactivityTimer.Start();
+		}
 
+		private void StopInactivityTimer()
+		{
+			_inactivityTimer.Stop();
+		}
 
+		public void ResetInactivityTimer()
+		{
+			if (IsVaultOpen)
+			{
+				_inactivityTimer.Stop();
+				_inactivityTimer.Start();
+			}
+		}
 
 		// INotifyPropertyChanged implementation
 		public event PropertyChangedEventHandler? PropertyChanged;
@@ -185,7 +232,6 @@ namespace PassManagerClient.ViewModels
 		{
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 		}
-
 	}
 
 	// Simple command implementation
