@@ -94,18 +94,35 @@ namespace PassManagerClient.ViewModels
 		public ICommand OpenVaultCommand { get; }
 		public ICommand CloseVaultCommand { get; }
 		public ICommand SavePasswordCommand { get; }
+		public ICommand DeleteEntryCommand { get; }
 
 		public MainViewModel()
 		{
 			OpenVaultCommand = new RelayCommand(OpenVault); // Now takes a parameter
 			SavePasswordCommand = new RelayCommand(_ => SavePassword()); // No parameter needed
 			CloseVaultCommand = new RelayCommand(_ => CloseVault()); // No parameter needed
+			DeleteEntryCommand = new RelayCommand(DeleteEntry);
 
 			_inactivityTimer = new DispatcherTimer()
 			{
 				Interval = TimeSpan.FromMinutes(5)
 			};
 			_inactivityTimer.Tick += InactivityTimer_Tick;
+		}
+
+		private void DeleteEntry(object? parameter)
+		{
+			if (parameter is VaultEntry entry && _vaultService != null && IsVaultOpen)
+			{
+				var result = MessageBox.Show($"Are you sure you want to delete the entry for {entry.Site}?", "Delete Entry", MessageBoxButton.YesNo, MessageBoxImage.Question);
+				if (result == MessageBoxResult.Yes)
+				{
+					VaultEntries.Remove(entry);
+					_vaultService.SaveVault(new Vault { Entries = VaultEntries.ToList() });
+					MessageBox.Show("Entry deleted successfully", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+					ResetInactivityTimer(); // Reset the inactivity timer when an entry is deleted
+				}
+			}
 		}
 
 		public void OpenVault(object? parameter)

@@ -205,6 +205,7 @@
                     <DataTemplate>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{Binding Site}" Width="200"/>
+                            <Button Content="Delete" Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" Width="100" Padding="10"/>
                         </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
